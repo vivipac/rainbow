@@ -1,0 +1,150 @@
+#!/bin/python3
+import matplotlib.pyplot as plt
+import numpy as np
+import math
+import random2
+
+class Draw:
+    def __init__(self, xlim: tuple[float, float] = (-10., 10.), ylim: tuple[float, float] = (-10., 10.), xlabel: str = "x", ylabel: str = "y" )-> None:            
+        plt.xlim(xlim[0], xlim[1])
+        plt.ylim(ylim[0], ylim[1])                
+        plt.gca().set_aspect('equal', adjustable='box')             
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)        
+
+    def draw_circle(self, radius: float, center: tuple[float, float], step: float = 0.001, color: str | tuple[float, float, float] = "black")-> None:
+        # Créer les données pour le cercle
+        angle = np.arange(0, 2*np.pi, step)
+
+        # Calculer les coordonnées du cercle
+        x_circle = center[0] + radius * np.cos(angle)
+        y_circle = center[1] + radius * np.sin(angle)
+
+        # Tracer le cercle
+        plt.plot(x_circle, y_circle, color=color)
+       
+
+    def draw_straight(self, a: float, b: float, range: tuple[float, float], step: float = 0.0001, color: tuple[float, float, float] | str = "red", opacity: float = 1.0)-> None:
+        # y = ax + b
+        # range value set where the straight will be  
+        points_start = range[0]
+        points_stop = range[1]
+        points_count: int = math.ceil( abs(points_start - points_stop  )/step)
+
+        x: list[float] = np.arange(points_start, points_stop, step, dtype=np.float64)
+        y: np.mat = np.mat(x)*a + np.ones(points_count, dtype=np.float64)*b        
+        y = np.reshape(y, (points_count,1))        
+
+        plt.plot(x, y, color=color, alpha=opacity)    
+
+    def display(self,) -> None:          
+        plt.show()
+
+def snell_descartes(i1 : float, n1: float = 1.0, n2: float = 1.344) -> float:
+    sin_i2= n1/n2 * math.sin(i1)
+    i2 = math.asin(sin_i2)
+    return i2
+
+def get_position_X_by_radius_and_y(radius: float, ypos: float) -> float: # x² = R² - y²
+    x_2: float = math.pow(radius, 2) - math.pow(ypos, 2)
+    return math.sqrt(x_2)
+
+def xlimit_refraction_by_a_b_radius(a: float, b: float, radius: float) ->float: #when ax+b = racine(R²-x²)
+    xlim = (-a*b + math.sqrt(math.pow(radius,2)*(math.pow(a,2) + 1.0) - math.pow(b,2)))/(math.pow(a,2)+1.0)
+    return xlim
+
+def xlimit_reflexion_by_a_b_radius(a: float, b: float, radius: float) ->float: #when ax+b = racine(R²-x²)
+    xlim = (-a*b - math.sqrt(math.pow(radius,2)*(math.pow(a,2) + 1.0) - math.pow(b,2)))/(math.pow(a,2)+1.0)
+    return xlim
+
+def get_pente_refraction1(incident_angle: float, refraction_angle: float, x0: float, h: float)-> float:
+    beta: float = math.pi/2 - incident_angle + refraction_angle
+    largeur: float = h*math.tan(beta)    
+    a: float = h/(x0 - (largeur - abs(x0)))
+    return a
+
+def get_angle_reflexion(x0: float, xlim: float, h: float, a: float, b: float)-> float:
+    largeur: float = abs(xlim) + abs(x0)
+    hauteur: float = h-(a*xlim+b)
+    i1: float = math.atan(hauteur/largeur)    
+    i2: float = math.atan((a*xlim+b)/xlim)    
+    return i1+i2
+
+def get_pente_reflexion(incident_angle: float, refraction_angle: float, x0: float, h: float)-> float:
+    beta: float = math.pi/2 - incident_angle - refraction_angle
+    largeur: float = h*math.tan(beta)    
+    a: float = h/(x0 - ( abs(x0) - largeur))
+    return a
+
+def get_angle_incident2(xlim_reflexion: float, a_reflexion: float, b_reflexion: float, xlim_refraction: float, h_lim_refraction: float) -> float :
+    hauteur: float = a_reflexion*xlim_reflexion+b_reflexion  
+    if xlim_reflexion > 0:
+        h: float =  h_lim_refraction + abs(hauteur)
+        theta: float = math.atan(h/(xlim_refraction-xlim_reflexion))
+        beta: float = math.atan(abs(hauteur)/(xlim_reflexion))  
+        i1: float = math.pi -beta - theta       
+    else:  
+        alpha: float =  math.atan(abs(hauteur/xlim_reflexion))    
+        beta: float = math.pi/2 - alpha
+        theta: float = math.atan((abs(hauteur) + h_lim_refraction)/(abs(xlim_reflexion)+xlim_refraction)  ) 
+        i1: float = math.pi/2 - beta - theta         
+    return i1
+
+def get_pente_refraction2(i2: float, xlim_reflexion: float, a_reflexion: float, b_reflexion: float) -> tuple[float, float] :
+    hauteur: float = a_reflexion*xlim_reflexion + b_reflexion     
+    alpha: float =  math.atan(abs(hauteur/xlim_reflexion)) 
+    if xlim_reflexion > 0:
+        x: float = math.pi - alpha - i2        
+        a: float = math.tan(x)
+        return a, x
+    else:
+        beta: float = math.pi/2 - alpha
+        x: float = beta + i2        
+        a: float = 1/math.tan(x)           
+        return a, math.pi/2 - x
+
+if __name__ == "__main__":
+    color_indice_map: dict[str, float] = {"red": 1.331, "orange" : 1.332, "yellow": 1.332, "green" : 1.333, "blue" : 1.336, "indigo" : 1.340, "purple" : 1.344}
+    selected_color: str = "red"
+    indice: float = color_indice_map[selected_color]       
+    draw: Draw = Draw(xlim=(-9, 2.2), ylim=(-9, 2.2))    
+    radius: float = 2.0
+    draw.draw_circle(radius, (0,0))
+    opacity: float = 0.2 #1
+    bigger_angle: float = -1.0
+
+    step: float = 0.01
+    for h in np.arange(step, radius, step, float):        
+        x0: float = -get_position_X_by_radius_and_y(radius, h)            
+        color=selected_color
+        #color=(random2.random(),random2.random(),random2.random())
+        draw.draw_straight(0, h, (-8, x0), color=color, opacity=opacity)                 
+        angle_incident: float = abs(math.atan(h/x0))              
+        
+        # droite de refraction en entrant dans la goute d'eau y = a_refraction*x + b_refraction
+        angle_refraction: float = snell_descartes(angle_incident, 1.0, indice)
+        a_refraction= get_pente_refraction1(angle_incident, angle_refraction, x0, h)        
+        b_refraction= h - a_refraction*x0
+        xlim_refraction: float = xlimit_refraction_by_a_b_radius(a_refraction, b_refraction, radius)        
+        draw.draw_straight(a_refraction, b_refraction, (x0, xlim_refraction), color=color, opacity=opacity)
+
+        # droite de reflexion y = a_reflexion*x + b_reflexion
+        angle_reflexion: float = get_angle_reflexion(x0, xlim_refraction, h, a_refraction, b_refraction)        
+        a_reflexion: float = get_pente_reflexion(angle_reflexion, math.atan((a_refraction*xlim_refraction + b_refraction)/xlim_refraction), xlim_refraction,a_refraction*xlim_refraction + b_refraction)
+        b_reflexion: float = xlim_refraction*(a_refraction-a_reflexion) + b_refraction
+        xlim_reflexion: float = xlimit_reflexion_by_a_b_radius(a_reflexion, b_reflexion, radius)                 
+        draw.draw_straight(a_reflexion, b_reflexion, (xlim_reflexion, xlim_refraction), color=color, opacity=opacity)        
+
+        #droite de refraction en sortie de la goute d'eau y = a_refraction2*x + b_refraction2
+        angle_incident2: float = abs(get_angle_incident2(xlim_reflexion, a_reflexion, b_reflexion, xlim_refraction, a_refraction*xlim_refraction + b_refraction))           
+        angle_refraction2: float = (snell_descartes(angle_incident2, indice, 1))         
+        a_refraction2, ray_angle = get_pente_refraction2(angle_refraction2, xlim_reflexion, a_reflexion, b_reflexion)
+        b_refraction2: float= xlim_reflexion*(a_reflexion-a_refraction2) + b_reflexion 
+        draw.draw_straight(a_refraction2, b_refraction2, (-7, xlim_reflexion), color=color, opacity=opacity)   
+
+        angle: float = ray_angle*180/math.pi        
+        if angle > bigger_angle :
+            bigger_angle = angle
+       
+    print("bigger_angle entre l'axe des abscisses et le rayon = ", bigger_angle)
+    draw.display()
